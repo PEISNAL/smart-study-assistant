@@ -8,15 +8,21 @@ import path from "path";
 dotenv.config();
 
 // ==========================================
-// 终端交互
+// 终端交互（支持 Web UI 回退）
 // ==========================================
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+const isWebMode = typeof global.uiAsk === "function";
+
+const rl = isWebMode
+  ? null
+  : readline.createInterface({ input: process.stdin, output: process.stdout });
 
 function ask(question) {
+  if (isWebMode) return global.uiAsk(question);
   return new Promise((resolve) => rl.question(question, resolve));
+}
+
+function closeIO() {
+  if (!isWebMode && rl) rl.close();
 }
 
 // ==========================================
@@ -321,7 +327,7 @@ export async function start(platform = "auto") {
   await ask("按 Enter 关闭浏览器...");
 
   await browser.close().catch(() => {});
-  rl.close();
+  closeIO();
   log("浏览器已关闭，再见！");
 }
 
@@ -709,6 +715,6 @@ if (isMain) {
     console.log("  ✅ 依赖链: askAI <-> english_platforms");
     console.log("  注意: 完整测试需要打开浏览器，请在实际页面中验证");
 
-    rl.close();
+    closeIO();
   })();
 }

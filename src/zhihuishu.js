@@ -6,15 +6,23 @@ import { askAI } from "./ai_solver.js";
 dotenv.config();
 
 // ==========================================
-// 终端交互工具
+// 终端交互工具（支持 Web UI 回退）
 // ==========================================
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-});
+const isWebMode = typeof global.uiAsk === "function";
+
+const rl = isWebMode
+  ? null
+  : readline.createInterface({ input: process.stdin, output: process.stdout });
 
 function ask(question) {
+  if (isWebMode) {
+    return global.uiAsk(question);
+  }
   return new Promise((resolve) => rl.question(question, resolve));
+}
+
+function closeIO() {
+  if (!isWebMode && rl) rl.close();
 }
 
 // ==========================================
@@ -770,7 +778,7 @@ export async function startZhihuishu() {
     if (!page) {
       log("❌ 登录失败，退出");
       await browser.close();
-      rl.close();
+      closeIO();
       return;
     }
 
@@ -779,7 +787,7 @@ export async function startZhihuishu() {
     if (!ok) {
       log("❌ 课程页面加载失败，退出");
       await browser.close();
-      rl.close();
+      closeIO();
       return;
     }
 
@@ -797,7 +805,7 @@ export async function startZhihuishu() {
     console.error(e);
   } finally {
     await browser.close().catch(() => {});
-    rl.close();
+    closeIO();
     log("浏览器已关闭，再见！");
   }
 }
