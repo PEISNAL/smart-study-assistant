@@ -7,290 +7,360 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0d1117;
-  --card: #161b22;
-  --border: #30363d;
-  --text: #c9d1d9;
-  --muted: #8b949e;
-  --accent: #58a6ff;
-  --green: #3fb950;
-  --red: #f85149;
-  --yellow: #d2991d;
-  --purple: #a371f7;
+  --bg: #0b0f15;
+  --card: #131822;
+  --border: #252b38;
+  --text: #dce1e8;
+  --muted: #6b7280;
+  --accent: #3b82f6;
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #f59e0b;
+  --purple: #8b5cf6;
+  --teal: #14b8a6;
 }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg); color: var(--text);
-  min-height: 100vh; padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg); color: var(--text); min-height: 100vh;
 }
-.container { max-width: 900px; margin: 0 auto; }
+.container { max-width: 780px; margin: 0 auto; padding: 32px 20px; }
 
-/* Header */
-.header {
-  text-align: center; padding: 32px 0 24px;
+/* Steps progress bar */
+.steps {
+  display: flex; justify-content: center; gap: 0; margin-bottom: 36px;
 }
-.header h1 { font-size: 28px; font-weight: 700; }
-.header p { color: var(--muted); margin-top: 6px; font-size: 14px; }
+.step {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 20px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+  color: var(--muted); background: var(--card);
+  transition: all .3s;
+}
+.step.active { color: #fff; background: var(--accent); }
+.step.done { color: var(--green); background: #0d2818; }
+.step-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  background: rgba(255,255,255,.1);
+}
+.step.active .step-num { background: rgba(255,255,255,.25); }
+.step.done .step-num { background: var(--green); color: #000; }
+.step-arrow { color: var(--border); margin: 0 4px; font-size: 18px; }
 
-/* Cards */
+/* Page (step content) */
+.page { display: none; }
+.page.visible { display: block; }
+
+/* Platform cards */
+.platform-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+@media(max-width:700px) { .platform-grid { grid-template-columns: 1fr; } }
+.pcard {
+  background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+  padding: 28px 20px; text-align: center; cursor: pointer;
+  transition: all .25s;
+}
+.pcard:hover { border-color: var(--accent); transform: translateY(-2px); }
+.pcard.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+.pcard-icon { font-size: 40px; margin-bottom: 12px; display: block; }
+.pcard h3 { font-size: 16px; margin-bottom: 6px; }
+.pcard p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* Form */
 .card {
   background: var(--card); border: 1px solid var(--border);
-  border-radius: 12px; padding: 20px; margin-bottom: 20px;
+  border-radius: 14px; padding: 24px; margin-bottom: 20px;
 }
-.card-title {
-  font-size: 15px; font-weight: 600; margin-bottom: 16px;
-  display: flex; align-items: center; gap: 8px;
-}
-
-/* Buttons */
-.btn-row { display: flex; gap: 12px; flex-wrap: wrap; }
-.btn {
-  flex: 1; min-width: 160px;
-  padding: 14px 20px; border-radius: 10px; border: none;
-  font-size: 15px; font-weight: 600; cursor: pointer;
-  transition: all .2s; text-align: center;
-}
-.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.3); }
-.btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
-.btn-zhihuishu { background: var(--accent); color: #fff; }
-.btn-english { background: var(--purple); color: #fff; }
-.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn-outline:hover { background: var(--border); }
-.btn-small { padding: 8px 16px; font-size: 13px; min-width: auto; flex: 0; }
-.btn-green { background: var(--green); color: #000; }
-.btn-red { background: var(--red); color: #fff; }
-
-/* Status */
-.status {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 6px 14px; border-radius: 20px; font-size: 13px;
-  font-weight: 600;
-}
-.status-idle { background: #1a2332; color: var(--muted); }
-.status-running { background: #1a2e1a; color: var(--green); }
-.status-error { background: #2e1a1a; color: var(--red); }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.dot-idle { background: var(--muted); }
-.dot-running { background: var(--green); animation: pulse 1s infinite; }
-.dot-error { background: var(--red); }
-@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-/* Prompt area */
-#promptArea {
-  display: none; margin-bottom: 20px;
-  background: #1a1f2e; border: 1px solid var(--yellow); border-radius: 12px;
-  padding: 16px 20px;
-}
-#promptText { font-size: 14px; margin-bottom: 12px; color: var(--yellow); }
-#promptInput { display: flex; gap: 8px; }
-#promptInput input {
-  flex: 1; padding: 10px 14px; border-radius: 8px;
-  border: 1px solid var(--border); background: var(--bg); color: var(--text);
-  font-size: 14px;
-}
-
-/* Config */
-.config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-@media(max-width:600px) { .config-grid { grid-template-columns: 1fr; } }
+.card-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media(max-width:600px) { .form-grid { grid-template-columns: 1fr; } }
+.form-grid.full { grid-template-columns: 1fr; }
 .field { display: flex; flex-direction: column; gap: 4px; }
-.field label { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+.field label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
 .field input {
-  padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+  padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border);
   background: var(--bg); color: var(--text); font-size: 13px;
+  transition: border-color .2s;
 }
 .field input:focus { border-color: var(--accent); outline: none; }
 .field input[type="password"] { -webkit-text-security: disc; }
+.field .hint { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
-.detail-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-.collapsible summary { cursor: pointer; color: var(--accent); font-size: 13px; user-select: none; }
+/* Buttons */
+.btn {
+  padding: 12px 28px; border-radius: 10px; border: none;
+  font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.btn:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-green { background: var(--green); color: #000; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--text); }
+.btn-sm { padding: 8px 16px; font-size: 12px; border-radius: 6px; }
+.btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+.btn-danger:hover { background: var(--red); color: #fff; }
+.btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+
+/* Dashboard */
+.dash-header {
+  display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;
+}
+.status-badge {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 700;
+}
+.status-idle { background: #1a1f2d; color: var(--muted); }
+.status-running { background: #0d2818; color: var(--green); }
+.status-error { background: #2e1515; color: var(--red); }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.dot-idle { background: var(--muted); }
+.dot-running { background: var(--green); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* Prompt bar */
+#promptBar {
+  display: none; margin-bottom: 20px;
+  background: #1a1a0d; border: 1px solid var(--yellow); border-radius: 12px;
+  padding: 14px 18px;
+}
+#promptBar .prompt-label { font-size: 12px; color: var(--yellow); margin-bottom: 8px; font-weight: 600; }
+#promptBar .prompt-row { display: flex; gap: 8px; }
+#promptBar input {
+  flex: 1; padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 14px;
+}
+#promptBar input:focus { border-color: var(--yellow); outline: none; }
 
 /* Log viewer */
 #logViewer {
-  background: #0a0e13; border: 1px solid var(--border); border-radius: 10px;
-  height: 340px; overflow-y: auto; padding: 14px;
-  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
-  font-size: 12px; line-height: 1.7;
+  background: #06090f; border: 1px solid var(--border); border-radius: 10px;
+  height: 380px; overflow-y: auto; padding: 14px 16px;
+  font-family: 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace;
+  font-size: 12px; line-height: 1.8;
 }
-#logViewer .line { white-space: pre-wrap; word-break: break-all; }
-#logViewer .line-error { color: var(--red); }
-#logViewer .line-prompt { color: var(--yellow); font-weight: 600; }
-#logViewer .line-system { color: var(--muted); }
-#logViewer .line-status { color: var(--green); }
+.line { white-space: pre-wrap; word-break: break-all; }
+.line-error { color: var(--red); }
+.line-prompt { color: var(--yellow); font-weight: 700; }
+.line-system { color: var(--muted); }
+.line-status { color: var(--green); }
 
-.log-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-
-/* Utility */
-.mt-12 { margin-top: 12px; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
 .mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
 .text-muted { color: var(--muted); font-size: 12px; }
+.back-link { color: var(--accent); font-size: 13px; cursor: pointer; user-select: none; }
+.back-link:hover { text-decoration: underline; }
+
+/* Alert */
+.alert {
+  padding: 12px 16px; border-radius: 10px; font-size: 13px; margin-bottom: 16px;
+}
+.alert-info { background: #0d1e33; border: 1px solid #1d4ed8; color: #93c5fd; }
+.alert-warn { background: #1a1a0d; border: 1px solid var(--yellow); color: #fde68a; }
 </style>
 </head>
 <body>
 <div class="container">
 
-  <!-- Header -->
-  <div class="header">
-    <h1>🎓 万能网课助手</h1>
-    <p>智慧树 &middot; WeLearn &middot; U校园 &middot; AI 驱动</p>
+  <!-- Steps indicator -->
+  <div class="steps" id="stepBar">
+    <div class="step active" data-step="1"><span class="step-num">1</span>选择平台</div>
+    <span class="step-arrow">▸</span>
+    <div class="step" data-step="2"><span class="step-num">2</span>配置信息</div>
+    <span class="step-arrow">▸</span>
+    <div class="step" data-step="3"><span class="step-num">3</span>运行监控</div>
   </div>
 
-  <!-- Prompt Area -->
-  <div id="promptArea">
-    <div id="promptText">⚠️ 模块需要你的输入</div>
-    <div id="promptInput">
-      <input type="text" id="promptField" placeholder="在此输入..." onkeydown="if(event.key==='Enter')sendResponse()">
-      <button class="btn btn-small btn-green" onclick="sendResponse()">发送</button>
-    </div>
-  </div>
-
-  <!-- Status + Actions -->
-  <div class="card">
-    <div class="card-title">
-      🎮 控制面板
-      <span id="statusBadge" class="status status-idle"><span class="dot dot-idle"></span>就绪</span>
-    </div>
-    <div class="btn-row">
-      <button id="btnZhihuishu" class="btn btn-zhihuishu" onclick="startModule('zhihuishu')">
-        📺 智慧树<br><small style="opacity:.7">自动视频 + AI答题</small>
-      </button>
-      <button id="btnEnglish" class="btn btn-english" onclick="startModule('english')">
-        📝 WeLearn / U校园<br><small style="opacity:.7">AI 全自动做题</small>
-      </button>
-    </div>
-    <div class="text-muted mt-12">
-      ⚠️ 运行中请勿关闭此页面。浏览器窗口会自动弹出，请勿遮挡。
-    </div>
-  </div>
-
-  <!-- Config -->
-  <div class="card">
-    <details class="collapsible">
-      <summary class="card-title" style="display:inline-flex">⚙️ 配置中心（点击展开）</summary>
-      <div class="config-grid mt-16">
-        <div class="field"><label>AI API Key</label><input type="password" id="cfg_AI_API_KEY" placeholder="sk-..."></div>
-        <div class="field"><label>AI API URL</label><input id="cfg_AI_API_URL" placeholder="https://api.deepseek.com/v1/chat/completions"></div>
-        <div class="field"><label>AI Model</label><input id="cfg_AI_MODEL" placeholder="deepseek-chat"></div>
-        <div class="field"><label>课程URL（可选）</label><input id="cfg_COURSE_URL" placeholder="https://studyh5.zhihuishu.com/..."></div>
-        <div class="field"><label>智慧树账号</label><input id="cfg_COURSE_USERNAME" placeholder="手机号"></div>
-        <div class="field"><label>智慧树密码</label><input type="password" id="cfg_COURSE_PASSWORD" placeholder="密码"></div>
+  <!-- ============ PAGE 1: Platform Select ============ -->
+  <div class="page visible" id="page1">
+    <div class="card">
+      <div class="card-title">🎯 请选择平台</div>
+      <div class="platform-grid">
+        <div class="pcard" data-platform="zhihuishu" onclick="selectPlatform(this)">
+          <span class="pcard-icon">📺</span>
+          <h3>智慧树</h3>
+          <p>自动看视频 + AI 弹窗答题<br>全自动挂机刷课时</p>
+        </div>
+        <div class="pcard" data-platform="welearn" onclick="selectPlatform(this)">
+          <span class="pcard-icon">📖</span>
+          <h3>WeLearn 随行课堂</h3>
+          <p>英语单元测试 AI 做题<br>自动翻页，模拟真人延迟</p>
+        </div>
+        <div class="pcard" data-platform="ucampus" onclick="selectPlatform(this)">
+          <span class="pcard-icon">🏫</span>
+          <h3>U校园 AI 版</h3>
+          <p>英语练习自动完成<br>单选/多选/填空全覆盖</p>
+        </div>
       </div>
-      <div class="detail-row mt-16">
-        <span class="text-muted">配置保存在本地 .env 文件，不会上传到服务器</span>
-        <button class="btn btn-small btn-outline" onclick="saveConfig()">💾 保存配置</button>
-      </div>
-    </details>
+    </div>
+    <div style="text-align:center">
+      <button class="btn btn-primary" id="btnNext1" disabled onclick="goStep(2)">
+        下一步 → 填写配置
+      </button>
+    </div>
   </div>
 
-  <!-- Logs -->
-  <div class="card">
-    <div class="log-bar">
-      <div class="card-title" style="margin:0">📋 运行日志</div>
-      <button class="btn btn-small btn-outline" onclick="clearLogs()">清空</button>
+  <!-- ============ PAGE 2: Config ============ -->
+  <div class="page" id="page2">
+    <div class="card">
+      <div class="flex-between">
+        <div class="card-title" style="margin:0" id="configTitle">⚙️ 配置信息</div>
+        <span class="back-link" onclick="goStep(1)">← 返回选平台</span>
+      </div>
+
+      <!-- 通用：AI -->
+      <div class="alert alert-info">🤖 AI 答题大脑需要配置大模型 API（三平台通用）</div>
+      <div class="form-grid mt-16">
+        <div class="field"><label>AI API Key *</label><input type="password" id="cfg_AI_API_KEY" placeholder="sk-..."></div>
+        <div class="field"><label>AI API URL *</label><input id="cfg_AI_API_URL" placeholder="https://api.deepseek.com/v1/chat/completions"></div>
+        <div class="field"><label>AI 模型名</label><input id="cfg_AI_MODEL" placeholder="deepseek-chat"></div>
+      </div>
+
+      <!-- 智慧树专属 -->
+      <div id="zhihuishuFields" style="display:none">
+        <div class="alert alert-warn mt-16">📺 智慧树需要你的账号密码来自动登录</div>
+        <div class="form-grid mt-16">
+          <div class="field"><label>智慧树账号（手机号）</label><input id="cfg_COURSE_USERNAME" placeholder="138xxxx"></div>
+          <div class="field"><label>智慧树密码</label><input type="password" id="cfg_COURSE_PASSWORD" placeholder="密码"></div>
+          <div class="field full"><label>课程播放页 URL（可选）</label><input id="cfg_COURSE_URL" placeholder="https://studyh5.zhihuishu.com/..."><span class="hint">留空则在启动时手动输入</span></div>
+        </div>
+      </div>
+
+      <!-- WeLearn / U校园 专属 -->
+      <div id="englishFields" style="display:none">
+        <div class="alert alert-warn mt-16">
+          <strong>📝 使用流程：</strong><br>
+          1. 点击「保存配置并运行」→ 自动打开 Chrome 浏览器<br>
+          2. 在浏览器中 <strong>手动登录</strong> WeLearn/U校园 账号<br>
+          3. 手动导航到 <strong>做题/测试</strong> 页面<br>
+          4. 回到本页面，在输入框中回复 <strong>"ok"</strong> → AI 自动开始答题
+        </div>
+      </div>
     </div>
-    <div id="logViewer"></div>
+
+    <div style="text-align:center">
+      <button class="btn btn-outline" onclick="goStep(1)" style="margin-right:12px">← 返回</button>
+      <button class="btn btn-green" id="btnSaveRun" disabled onclick="saveAndRun()">
+        💾 保存配置并运行
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ PAGE 3: Dashboard ============ -->
+  <div class="page" id="page3">
+    <!-- Prompt bar -->
+    <div id="promptBar">
+      <div class="prompt-label" id="promptLabel">⚠️ 模块需要你的输入</div>
+      <div class="prompt-row">
+        <input type="text" id="promptField" placeholder="在此输入..." onkeydown="if(event.key==='Enter')sendResponse()">
+        <button class="btn btn-sm btn-green" onclick="sendResponse()">发送</button>
+      </div>
+    </div>
+
+    <!-- Dashboard header -->
+    <div class="card">
+      <div class="dash-header">
+        <div>
+          <div class="card-title" style="margin:0" id="dashTitle">📋 运行监控</div>
+          <span class="text-muted" id="dashPlatform"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <span id="statusBadge" class="status-badge status-idle"><span class="dot dot-idle"></span>就绪</span>
+          <button class="btn btn-sm btn-danger" id="btnStop" disabled onclick="stopModule()">⏹ 停止</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Log -->
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:12px">
+        <div style="font-weight:700">📜 实时日志</div>
+        <button class="btn btn-sm btn-outline" onclick="document.getElementById('logViewer').innerHTML=''">清空</button>
+      </div>
+      <div id="logViewer"></div>
+    </div>
   </div>
 
 </div>
 
 <script>
-const logViewer = document.getElementById('logViewer');
-const statusBadge = document.getElementById('statusBadge');
-const promptArea = document.getElementById('promptArea');
-const promptText = document.getElementById('promptText');
-let currentPromptId = null;
+// ==========================================
+// State
+// ==========================================
+let selectedPlatform = null;
+let promptId = null;
 
-// ==== SSE Log Stream ====
-const es = new EventSource('/api/logs');
+// ==========================================
+// Navigation
+// ==========================================
+function goStep(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+  document.getElementById('page' + n).classList.add('visible');
 
-es.onmessage = (e) => {
-  const { type, message, time } = JSON.parse(e.data);
-  appendLog(type, `[${time}] ${message}`);
-};
-
-es.addEventListener('prompt', (e) => {
-  const { id, question } = JSON.parse(e.data);
-  currentPromptId = id;
-  promptText.textContent = question;
-  promptArea.style.display = 'block';
-  document.getElementById('promptField').value = '';
-  document.getElementById('promptField').focus();
-});
-
-function appendLog(type, text) {
-  const div = document.createElement('div');
-  div.className = `line line-${type}`;
-  div.textContent = text;
-  logViewer.appendChild(div);
-  logViewer.scrollTop = logViewer.scrollHeight;
-}
-
-function clearLogs() {
-  logViewer.innerHTML = '';
-  appendLog('system', '日志已清空');
-}
-
-// ==== Prompt Response ====
-function sendResponse() {
-  const answer = document.getElementById('promptField').value;
-  if (!answer && answer !== '0') return;
-  fetch('/api/respond', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ id: currentPromptId, answer }),
-  }).then(r => r.json()).then(data => {
-    if (data.ok) {
-      appendLog('system', `> ${answer}`);
-      promptArea.style.display = 'none';
-      currentPromptId = null;
-    }
+  // Update step bar
+  document.querySelectorAll('.step').forEach(s => {
+    const sNum = parseInt(s.dataset.step);
+    s.classList.remove('active','done');
+    if (sNum < n) s.classList.add('done');
+    if (sNum === n) s.classList.add('active');
   });
+
+  if (n === 2) updateConfigPage();
+  if (n === 3) updateDashPage();
 }
 
-// ==== Module Control ====
-async function startModule(name) {
-  const btn = name === 'zhihuishu' ? document.getElementById('btnZhihuishu') : document.getElementById('btnEnglish');
-  btn.disabled = true;
-  setStatus('running', '运行中');
+function selectPlatform(card) {
+  document.querySelectorAll('.pcard').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedPlatform = card.dataset.platform;
+  document.getElementById('btnNext1').disabled = false;
+  document.getElementById('btnSaveRun').disabled = false;
+}
 
-  try {
-    await fetch('/api/start', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ module: name }),
-    });
-  } catch (err) {
-    appendLog('error', `请求失败: ${err.message}`);
+function updateConfigPage() {
+  if (!selectedPlatform) {
+    alert('请先在 Step 1 选择一个平台！');
+    goStep(1);
+    return;
   }
-  // Poll status until done
-  pollStatus(btn);
-}
 
-async function pollStatus(btn) {
-  try {
-    const r = await fetch('/api/status');
-    const { running } = await r.json();
-    if (running) {
-      setTimeout(() => pollStatus(btn), 2000);
-    } else {
-      btn.disabled = false;
-      setStatus('idle', '就绪');
-    }
-  } catch {
-    setTimeout(() => pollStatus(btn), 2000);
+  const zhishu = document.getElementById('zhihuishuFields');
+  const eng = document.getElementById('englishFields');
+  const title = document.getElementById('configTitle');
+
+  if (selectedPlatform === 'zhihuishu') {
+    zhishu.style.display = 'block';
+    eng.style.display = 'none';
+    title.textContent = '⚙️ 智慧树 — 配置账号密码 & AI';
+  } else {
+    zhishu.style.display = 'none';
+    eng.style.display = 'block';
+    title.textContent = selectedPlatform === 'welearn' ? '⚙️ WeLearn — 配置 AI（手动登录）' : '⚙️ U校园 — 配置 AI（手动登录）';
   }
+
+  document.getElementById('btnSaveRun').disabled = false;
+  loadConfig();
 }
 
-function setStatus(state, text) {
-  statusBadge.className = `status status-${state}`;
-  statusBadge.innerHTML = `<span class="dot dot-${state}"></span>${text}`;
+function updateDashPage() {
+  const names = { zhihuishu: '智慧树', welearn: 'WeLearn 随行课堂', ucampus: 'U校园 AI版' };
+  document.getElementById('dashTitle').textContent = '📋 ' + names[selectedPlatform] + ' — 运行监控';
+  document.getElementById('dashPlatform').textContent = '平台: ' + names[selectedPlatform];
+  setStatus('idle', '就绪');
+  document.getElementById('btnStop').disabled = true;
 }
 
-// ==== Config ====
+// ==========================================
+// Config
+// ==========================================
+const ALL_FIELDS = ['AI_API_KEY','AI_API_URL','AI_MODEL','COURSE_URL','COURSE_USERNAME','COURSE_PASSWORD'];
+
 async function loadConfig() {
   const r = await fetch('/api/config');
   const cfg = await r.json();
-  const fields = ['AI_API_KEY','AI_API_URL','AI_MODEL','COURSE_URL','COURSE_USERNAME','COURSE_PASSWORD'];
-  for (const f of fields) {
+  for (const f of ALL_FIELDS) {
     const el = document.getElementById('cfg_' + f);
     if (el && cfg[f] && !cfg[f].includes('your_') && !cfg[f].includes('xxx')) {
       el.value = cfg[f];
@@ -299,19 +369,128 @@ async function loadConfig() {
 }
 
 async function saveConfig() {
-  const fields = ['AI_API_KEY','AI_API_URL','AI_MODEL','COURSE_URL','COURSE_USERNAME','COURSE_PASSWORD'];
   const config = {};
-  for (const f of fields) {
-    config[f] = document.getElementById('cfg_' + f).value;
+  for (const f of ALL_FIELDS) {
+    config[f] = document.getElementById('cfg_' + f).value || '';
   }
   await fetch('/api/config', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(config),
   });
-  appendLog('system', '✅ 配置已保存到 .env');
 }
 
+// ==========================================
+// Run / Stop
+// ==========================================
+async function saveAndRun() {
+  await saveConfig();
+  goStep(3);
+  setStatus('running', '启动中...');
+  appendLog('system', '正在启动 ' + platformName() + ' 模块...');
+
+  try {
+    const resp = await fetch('/api/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ module: selectedPlatform }),
+    });
+    const data = await resp.json();
+    if (!data.ok) {
+      appendLog('error', '启动失败: ' + data.error);
+      setStatus('error', '启动失败');
+      return;
+    }
+    document.getElementById('btnStop').disabled = false;
+    pollStatus();
+  } catch (err) {
+    appendLog('error', '请求失败: ' + err.message);
+    setStatus('error', '通信错误');
+  }
+}
+
+async function stopModule() {
+  appendLog('system', '⚠️ 正在请求停止模块...');
+  await fetch('/api/stop', { method: 'POST' });
+  document.getElementById('btnStop').disabled = true;
+}
+
+async function pollStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const { running } = await r.json();
+    if (running) {
+      setStatus('running', '运行中');
+      setTimeout(pollStatus, 3000);
+    } else {
+      setStatus('idle', '就绪');
+      document.getElementById('btnStop').disabled = true;
+      appendLog('system', '✅ 模块运行结束');
+    }
+  } catch {
+    setTimeout(pollStatus, 3000);
+  }
+}
+
+function platformName() {
+  const names = { zhihuishu: '智慧树', welearn: 'WeLearn', ucampus: 'U校园' };
+  return names[selectedPlatform] || selectedPlatform;
+}
+
+function setStatus(state, text) {
+  const badge = document.getElementById('statusBadge');
+  badge.className = 'status-badge status-' + state;
+  badge.innerHTML = '<span class="dot dot-' + state + '"></span>' + text;
+}
+
+// ==========================================
+// Log viewer
+// ==========================================
+const logViewer = document.getElementById('logViewer');
+const es = new EventSource('/api/logs');
+
+es.onmessage = (e) => {
+  const { type, message, time } = JSON.parse(e.data);
+  appendLog(type, '[' + time + '] ' + message);
+};
+
+es.addEventListener('prompt', (e) => {
+  const { id, question } = JSON.parse(e.data);
+  promptId = id;
+  document.getElementById('promptBar').style.display = 'block';
+  document.getElementById('promptLabel').textContent = '⚠️ ' + question;
+  document.getElementById('promptField').value = '';
+  document.getElementById('promptField').focus();
+  appendLog('prompt', '⚠️ ' + question);
+});
+
+function appendLog(type, text) {
+  const div = document.createElement('div');
+  div.className = 'line line-' + type;
+  div.textContent = text;
+  logViewer.appendChild(div);
+  logViewer.scrollTop = logViewer.scrollHeight;
+}
+
+function sendResponse() {
+  const answer = document.getElementById('promptField').value;
+  if (!answer && answer !== '0') return;
+  fetch('/api/respond', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ id: promptId, answer }),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) {
+      appendLog('system', '> ' + answer);
+      document.getElementById('promptBar').style.display = 'none';
+      promptId = null;
+    }
+  });
+}
+
+// ==========================================
+// Init
+// ==========================================
 loadConfig();
 </script>
 </body>

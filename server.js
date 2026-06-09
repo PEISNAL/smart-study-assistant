@@ -128,6 +128,7 @@ app.post("/api/config", (req, res) => {
 // 模块控制
 // ==========================================
 let runningModule = null;
+let stopRequested = false;
 
 app.post("/api/start", async (req, res) => {
   const { module: moduleName } = req.body;
@@ -136,28 +137,44 @@ app.post("/api/start", async (req, res) => {
     return res.json({ ok: false, error: "已有模块在运行中，请等待完成" });
   }
 
+  stopRequested = false;
   runningModule = moduleName;
   res.json({ ok: true });
 
   try {
-    broadcastLog("system", `━━━━━━━━━━━━━━━━━━━━━━━━`);
+    broadcastLog("system", "━━━━━━━━━━━━━━━━━━━━━━━━");
     broadcastLog("system", `🚀 启动模块: ${moduleName}`);
 
     if (moduleName === "zhihuishu") {
       const { startZhihuishu } = await import("./src/zhihuishu.js");
       await startZhihuishu();
-    } else if (moduleName === "english") {
+    } else if (moduleName === "welearn" || moduleName === "ucampus") {
       const { start } = await import("./src/english_platforms.js");
-      await start();
+      await start(moduleName);
     }
 
-    broadcastLog("system", "✅ 模块运行完成");
+    if (stopRequested) {
+      broadcastLog("system", "⏹ 模块已被用户停止");
+    } else {
+      broadcastLog("system", "✅ 模块运行完成");
+    }
     global.uiStatus("idle");
   } catch (err) {
     broadcastLog("error", `模块异常: ${err.message}`);
     global.uiStatus("error");
   } finally {
     runningModule = null;
+    stopRequested = false;
+  }
+});
+
+app.post("/api/stop", (req, res) => {
+  if (runningModule) {
+    stopRequested = true;
+    broadcastLog("system", "⏹ 用户请求停止，模块将在当前操作后退出...");
+    res.json({ ok: true });
+  } else {
+    res.json({ ok: false, error: "没有运行中的模块" });
   }
 });
 
