@@ -137,6 +137,7 @@ body {
         <span class="back-link" onclick="goStep(1)">← 返回</span>
       </div>
 
+      <div class="alert alert-info" id="platformBadge" style="font-weight:700;font-size:14px">📌 当前平台：未选择</div>
       <div class="alert alert-info">🤖 所有平台都需要 AI API（推荐 DeepSeek，便宜且速度快）</div>
       <div class="form-grid">
         <div class="field"><label>AI API Key *</label><input type="password" id="cfg_AI_API_KEY" placeholder="sk-..."></div>
@@ -242,10 +243,22 @@ function selectPlatform(card) {
 
 function updateConfigPage() {
   if (!selectedPlatform) { goStep(1); return; }
-  document.getElementById('zhihuishuFields').style.display = selectedPlatform === 'zhihuishu' ? 'block' : 'none';
-  document.getElementById('englishFields').style.display = selectedPlatform !== 'zhihuishu' ? 'block' : 'none';
+  const isZhihuishu = selectedPlatform === 'zhihuishu';
+  document.getElementById('zhihuishuFields').style.display = isZhihuishu ? 'block' : 'none';
+  document.getElementById('englishFields').style.display = isZhihuishu ? 'none' : 'block';
   const names = { zhihuishu: '智慧树', welearn: 'WeLearn 随行课堂', ucampus: 'U校园 AI版' };
   document.getElementById('configTitle').textContent = '⚙️ ' + names[selectedPlatform] + ' — 配置信息';
+
+  // 平台指示徽章
+  const badge = document.getElementById('platformBadge');
+  if (isZhihuishu) {
+    badge.innerHTML = '📺 当前平台：<b>智慧树</b> — 需填写下方账号密码以自动登录';
+    badge.className = 'alert alert-warn';
+  } else {
+    badge.innerHTML = '📖 当前平台：<b>' + names[selectedPlatform] + '</b> — 无需账号密码，启动后手动在浏览器登录';
+    badge.className = 'alert alert-info';
+  }
+
   document.getElementById('btnSaveRun').disabled = false;
   loadConfig();
 }
