@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0b0f15; --card: #131822; --border: #252b38; --text: #dce1e8;
+  --muted: #6b7280; --accent: #3b82f6; --green: #22c55e; --red: #ef4444;
+  --yellow: #f59e0b; --purple: #8b5cf6;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--bg); color: var(--text); padding: 24px; user-select: none;
+}
+.container { max-width: 700px; margin: 0 auto; }
+
+.steps { display: flex; justify-content: center; gap: 0; margin-bottom: 28px; }
+.step { display: flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 16px; font-size: 12px; font-weight: 600; color: var(--muted); background: var(--card); }
+.step.active { color: #fff; background: var(--accent); }
+.step.done { color: var(--green); background: #0d2818; }
+.step-num { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.1); }
+.step.active .step-num { background: rgba(255,255,255,.25); }
+.step.done .step-num { background: var(--green); color: #000; }
+.step-arrow { color: var(--border); margin: 0 6px; }
+
+.page { display: none; }
+.page.visible { display: block; }
+
+.platform-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media(max-width:600px) { .platform-grid { grid-template-columns: 1fr; } }
+.pcard { background: var(--card); border: 2px solid var(--border); border-radius: 14px; padding: 24px 16px; text-align: center; cursor: pointer; transition: all .2s; }
+.pcard:hover { border-color: var(--accent); transform: translateY(-2px); }
+.pcard.selected { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(59,130,246,.2); }
+.pcard-icon { font-size: 36px; margin-bottom: 8px; display: block; }
+.pcard h3 { font-size: 14px; margin-bottom: 4px; }
+.pcard p { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-grid.full { grid-template-columns: 1fr; }
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field label { font-size: 10px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.field input, .field select { padding: 9px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; transition: border-color .2s; }
+.field input:focus { border-color: var(--accent); outline: none; }
+.field input[type="password"] { -webkit-text-security: disc; }
+.field .hint { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+.btn { padding: 10px 22px; border-radius: 8px; border: none; font-size: 14px; font-weight: 700; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.btn:disabled { opacity: .35; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-green { background: var(--green); color: #000; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+.btn-sm { padding: 6px 14px; font-size: 11px; }
+
+.dash-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+.status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 14px; border-radius: 16px; font-size: 12px; font-weight: 700; }
+.status-idle { background: #1a1f2d; color: var(--muted); }
+.status-running { background: #0d2818; color: var(--green); }
+.dot { width: 7px; height: 7px; border-radius: 50%; }
+.dot-idle { background: var(--muted); }
+.dot-running { background: var(--green); animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+#promptBar { display: none; margin-bottom: 14px; background: #1a1a0d; border: 1px solid var(--yellow); border-radius: 10px; padding: 12px 16px; }
+#promptLabel { font-size: 12px; color: var(--yellow); margin-bottom: 8px; font-weight: 600; }
+.prompt-row { display: flex; gap: 8px; }
+.prompt-row input { flex: 1; padding: 8px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 13px; }
+.prompt-row input:focus { border-color: var(--yellow); outline: none; }
+
+#logViewer { background: #06090f; border: 1px solid var(--border); border-radius: 8px; height: 320px; overflow-y: auto; padding: 12px; font-family: 'Fira Code', 'Cascadia Code', 'Consolas', monospace; font-size: 11px; line-height: 1.7; }
+.line { white-space: pre-wrap; word-break: break-all; }
+.line-error { color: var(--red); }
+.line-prompt { color: var(--yellow); font-weight: 700; }
+.line-system { color: var(--muted); }
+
+.alert { padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 12px; }
+.alert-info { background: #0d1e33; border: 1px solid #1d4ed8; color: #93c5fd; }
+.alert-warn { background: #1a1a0d; border: 1px solid var(--yellow); color: #fde68a; }
+
+.flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.text-muted { color: var(--muted); font-size: 11px; }
+.back-link { color: var(--accent); font-size: 12px; cursor: pointer; }
+.back-link:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Steps -->
+  <div class="steps">
+    <div class="step active" data-step="1"><span class="step-num">1</span>选择平台</div>
+    <span class="step-arrow">▸</span>
+    <div class="step" data-step="2"><span class="step-num">2</span>配置信息</div>
+    <span class="step-arrow">▸</span>
+    <div class="step" data-step="3"><span class="step-num">3</span>运行监控</div>
+  </div>
+
+  <!-- ===== PAGE 1 ===== -->
+  <div class="page visible" id="page1">
+    <div class="card">
+      <div class="card-title">🎯 请选择你要使用的平台</div>
+      <div class="platform-grid">
+        <div class="pcard" data-platform="zhihuishu" onclick="selectPlatform(this)">
+          <span class="pcard-icon">📺</span>
+          <h3>智慧树</h3>
+          <p>自动看视频 + AI 弹窗答题<br>全自动挂机刷课时</p>
+        </div>
+        <div class="pcard" data-platform="welearn" onclick="selectPlatform(this)">
+          <span class="pcard-icon">📖</span>
+          <h3>WeLearn 随行课堂</h3>
+          <p>英语单元测试 AI 做题<br>自动翻页，防封延迟</p>
+        </div>
+        <div class="pcard" data-platform="ucampus" onclick="selectPlatform(this)">
+          <span class="pcard-icon">🏫</span>
+          <h3>U校园 AI 版</h3>
+          <p>英语练习自动完成<br>单选多选填空全覆盖</p>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center">
+      <button class="btn btn-primary" id="btnNext1" disabled onclick="goStep(2)">下一步 →</button>
+    </div>
+  </div>
+
+  <!-- ===== PAGE 2 ===== -->
+  <div class="page" id="page2">
+    <div class="card">
+      <div class="flex-between">
+        <div class="card-title" style="margin:0" id="configTitle">⚙️ 配置信息</div>
+        <span class="back-link" onclick="goStep(1)">← 返回</span>
+      </div>
+
+      <div class="alert alert-info">🤖 所有平台都需要 AI API（推荐 DeepSeek，便宜且速度快）</div>
+      <div class="form-grid">
+        <div class="field"><label>AI API Key *</label><input type="password" id="cfg_AI_API_KEY" placeholder="sk-..."></div>
+        <div class="field"><label>AI API URL *</label><input id="cfg_AI_API_URL" placeholder="https://api.deepseek.com/v1/chat/completions"></div>
+        <div class="field"><label>AI 模型名</label><input id="cfg_AI_MODEL" placeholder="deepseek-chat"></div>
+        <div class="field"><label>模型选择器</label></div>
+      </div>
+
+      <!-- 智慧树专属 -->
+      <div id="zhihuishuFields" style="display:none">
+        <div class="alert alert-warn mt-16">📺 智慧树需要账号密码自动登录。遇到验证码时会在下方弹出输入框等你手动处理。</div>
+        <div class="form-grid mt-12">
+          <div class="field"><label>智慧树账号（手机号）*</label><input id="cfg_COURSE_USERNAME" placeholder="138xxxxxxxx"></div>
+          <div class="field"><label>智慧树密码 *</label><input type="password" id="cfg_COURSE_PASSWORD" placeholder="你的密码"></div>
+          <div class="field full"><label>课程播放页 URL（可选，留空则运行时输入）</label><input id="cfg_COURSE_URL" placeholder="https://studyh5.zhihuishu.com/..."><span class="hint">从浏览器复制课程的完整地址</span></div>
+        </div>
+      </div>
+
+      <!-- 英语平台专属 -->
+      <div id="englishFields" style="display:none">
+        <div class="alert alert-warn mt-16">
+          <strong>📝 使用步骤：</strong><br>
+          ① 点击「保存配置并运行」→ 自动打开 Chrome 浏览器<br>
+          ② 在浏览器中手动登录你的 WeLearn / U校园 账号<br>
+          ③ 手动导航到做题/测试页面<br>
+          ④ 回到本窗口，在下方输入框中输入 <strong>ok</strong> → AI 自动答题
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center">
+      <button class="btn btn-outline" onclick="goStep(1)" style="margin-right:10px">← 返回</button>
+      <button class="btn btn-green" id="btnSaveRun" disabled onclick="saveAndRun()">💾 保存并运行</button>
+    </div>
+  </div>
+
+  <!-- ===== PAGE 3 ===== -->
+  <div class="page" id="page3">
+    <div id="promptBar">
+      <div id="promptLabel">⚠️ </div>
+      <div class="prompt-row">
+        <input type="text" id="promptField" placeholder="在此输入..." onkeydown="if(event.key==='Enter')sendResponse()">
+        <button class="btn btn-sm btn-green" onclick="sendResponse()">发送</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="dash-header">
+        <div>
+          <div class="card-title" style="margin:0" id="dashTitle">📋 运行监控</div>
+          <span class="text-muted" id="dashPlatform"></span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span id="statusBadge" class="status-badge status-idle"><span class="dot dot-idle"></span>就绪</span>
+          <button class="btn btn-sm btn-danger" id="btnStop" disabled onclick="stopModule()">⏹ 停止</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between" style="margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">📜 实时日志</div>
+        <button class="btn btn-sm btn-outline" onclick="clearLogs()">清空</button>
+      </div>
+      <div id="logViewer"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ==========================================
+// State
+// ==========================================
+let selectedPlatform = null;
+let promptId = null;
+const logViewer = document.getElementById('logViewer');
+const ALL_FIELDS = ['AI_API_KEY','AI_API_URL','AI_MODEL','COURSE_URL','COURSE_USERNAME','COURSE_PASSWORD'];
+
+// ==========================================
+// Navigation
+// ==========================================
+function goStep(n) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('visible'));
+  document.getElementById('page' + n).classList.add('visible');
+  document.querySelectorAll('.step').forEach(s => {
+    const sn = parseInt(s.dataset.step);
+    s.classList.remove('active','done');
+    if (sn < n) s.classList.add('done');
+    if (sn === n) s.classList.add('active');
+  });
+  if (n === 2) updateConfigPage();
+  if (n === 3) updateDashPage();
+}
+
+function selectPlatform(card) {
+  document.querySelectorAll('.pcard').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  selectedPlatform = card.dataset.platform;
+  document.getElementById('btnNext1').disabled = false;
+  document.getElementById('btnSaveRun').disabled = false;
+}
+
+function updateConfigPage() {
+  if (!selectedPlatform) { goStep(1); return; }
+  document.getElementById('zhihuishuFields').style.display = selectedPlatform === 'zhihuishu' ? 'block' : 'none';
+  document.getElementById('englishFields').style.display = selectedPlatform !== 'zhihuishu' ? 'block' : 'none';
+  const names = { zhihuishu: '智慧树', welearn: 'WeLearn 随行课堂', ucampus: 'U校园 AI版' };
+  document.getElementById('configTitle').textContent = '⚙️ ' + names[selectedPlatform] + ' — 配置信息';
+  document.getElementById('btnSaveRun').disabled = false;
+  loadConfig();
+}
+
+function updateDashPage() {
+  const names = { zhihuishu: '📺 智慧树', welearn: '📖 WeLearn 随行课堂', ucampus: '🏫 U校园 AI版' };
+  document.getElementById('dashTitle').textContent = '📋 ' + names[selectedPlatform] + ' — 运行监控';
+  document.getElementById('dashPlatform').textContent = '';
+  setStatus('idle','就绪');
+  document.getElementById('btnStop').disabled = true;
+}
+
+// ==========================================
+// Config
+// ==========================================
+async function loadConfig() {
+  const cfg = await window.app.config.get();
+  for (const f of ALL_FIELDS) {
+    const el = document.getElementById('cfg_' + f);
+    if (el && cfg[f] && !cfg[f].includes('your_') && !cfg[f].includes('xxx')) {
+      el.value = cfg[f];
+    }
+  }
+}
+
+async function saveAndRun() {
+  const config = {};
+  for (const f of ALL_FIELDS) config[f] = document.getElementById('cfg_' + f).value || '';
+  await window.app.config.save(config);
+  goStep(3);
+  setStatus('running','启动中...');
+  appendLog('system','正在启动...');
+  const resp = await window.app.module.start(selectedPlatform);
+  if (!resp.ok) appendLog('error','启动失败: ' + resp.error);
+}
+
+async function stopModule() {
+  appendLog('system','⏹ 正在请求停止...');
+  await window.app.module.stop();
+}
+
+// ==========================================
+// Logs & Status
+// ==========================================
+window.app.onLog(({ type, message, time }) => appendLog(type, '[' + time + '] ' + message));
+
+window.app.onStatus((status) => {
+  if (status === 'running') {
+    setStatus('running','运行中');
+    document.getElementById('btnStop').disabled = false;
+  } else {
+    setStatus('idle','就绪');
+    document.getElementById('btnStop').disabled = true;
+  }
+  if (status === 'idle' || status === 'error') pollFinalStatus();
+});
+
+async function pollFinalStatus() {
+  const s = await window.app.module.status();
+  if (!s.running) {
+    setStatus('idle','就绪');
+    document.getElementById('btnStop').disabled = true;
+    appendLog('system','✅ 模块运行结束');
+  }
+}
+
+window.app.onPrompt(({ id, question }) => {
+  promptId = id;
+  document.getElementById('promptBar').style.display = 'block';
+  document.getElementById('promptLabel').textContent = '⚠️ ' + question;
+  document.getElementById('promptField').value = '';
+  document.getElementById('promptField').focus();
+  appendLog('prompt','⚠️ ' + question);
+});
+
+function sendResponse() {
+  const answer = document.getElementById('promptField').value;
+  if (!answer && answer !== '0') return;
+  window.app.respondPrompt(promptId, answer);
+  appendLog('system','> ' + answer);
+  document.getElementById('promptBar').style.display = 'none';
+  promptId = null;
+}
+
+function appendLog(type, text) {
+  const div = document.createElement('div');
+  div.className = 'line line-' + type;
+  div.textContent = text;
+  logViewer.appendChild(div);
+  logViewer.scrollTop = logViewer.scrollHeight;
+}
+
+function clearLogs() { logViewer.innerHTML = ''; }
+
+function setStatus(state, text) {
+  const badge = document.getElementById('statusBadge');
+  badge.className = 'status-badge status-' + state;
+  badge.innerHTML = '<span class="dot dot-' + state + '"></span>' + text;
+}
+
+// Init
+loadConfig();
+</script>
+</body>
+</html>
