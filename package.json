@@ -2,10 +2,10 @@
   "name": "smart-study-assistant",
   "version": "1.0.0",
   "description": "智能网课助手 - 自动化网课学习与AI辅助工具",
-  "main": "desktop/main.js",
+  "main": "server.js",
   "scripts": {
-    "start": "electron .",
-    "web": "node server.js",
+    "start": "node server.js",
+    "desktop": "electron .",
     "cli": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
