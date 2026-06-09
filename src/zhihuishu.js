@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { chromium } from "playwright";
 import readline from "readline";
+import { askAI } from "./ai_solver.js";
 
 dotenv.config();
 
@@ -292,9 +293,118 @@ async function playVideo(page) {
 }
 
 // ==========================================
-// 4. 关闭测验弹窗
+// 4. 从弹窗中提取题目信息
 // ==========================================
-async function dismissQuizPopup(page) {
+async function extractQuizFromPopup(page, popupSel) {
+  return await page.evaluate((popupSel) => {
+    const popup = document.querySelector(popupSel);
+    if (!popup) return null;
+
+    // 提取题目文本：常见类名
+    const questionEl =
+      popup.querySelector(".topic-content") ||
+      popup.querySelector(".topic-desc") ||
+      popup.querySelector(".question-text") ||
+      popup.querySelector(".title") ||
+      popup.querySelector('[class*="question"]') ||
+      popup.querySelector('[class*="topic"]') ||
+      popup.querySelector("p");
+
+    const question = questionEl ? questionEl.textContent.trim() : popup.textContent.trim().substring(0, 300);
+
+    // 提取选项
+    const optionEls =
+      popup.querySelectorAll(".topic-option") ||
+      popup.querySelectorAll(".option-item") ||
+      popup.querySelectorAll('[class*="option"]') ||
+      popup.querySelectorAll("label") ||
+      [];
+
+    const options = [];
+    const optionMap = {}; // letter -> element index
+
+    optionEls.forEach((el, idx) => {
+      const text = el.textContent.trim().replace(/^\s*[A-H][\.\、\s]+/, ""); // 去掉前导字母
+      if (text && text.length > 0 && text.length < 500) {
+        options.push(text);
+      }
+    });
+
+    // 如果没找到明确选项，尝试从整个弹窗文本解析
+    if (options.length === 0) {
+      const allText = popup.textContent;
+      const lines = allText.split("\n").filter((l) => /^[A-H][\.\、\s]/.test(l.trim()));
+      lines.forEach((l) => {
+        options.push(l.trim().replace(/^[A-H][\.\、\s]+/, ""));
+      });
+    }
+
+    // 判断题型：有 checkbox 则为多选，否则单选
+    const checkboxes = popup.querySelectorAll('input[type="checkbox"]');
+    const radios = popup.querySelectorAll('input[type="radio"]');
+    let type = "single";
+    if (checkboxes.length > 0) type = "multiple";
+    else if (radios.length === 0 && options.length === 0) type = "fill";
+
+    return { question: question.substring(0, 500), options, type };
+  }, popupSel);
+}
+
+// ==========================================
+// 4b. 点击弹窗中的对应选项
+// ==========================================
+async function clickAnswerInPopup(page, popupSel, answer) {
+  // answer 可能是 "A" / ["A", "C"] / "填空题文本"
+  const letters = Array.isArray(answer) ? answer : [answer];
+
+  return await page.evaluate(({ popupSel, letters }) => {
+    const popup = document.querySelector(popupSel);
+    if (!popup) return false;
+
+    const optionEls = Array.from(
+      popup.querySelectorAll(
+        ".topic-option, .option-item, [class*='option'], label, li"
+      )
+    );
+
+    // 过滤掉纯文本 label（没有交互元素的那种）
+    const clickable = optionEls.filter((el) => {
+      return (
+        el.querySelector("input") ||
+        el.querySelector('input[type="radio"]') ||
+        el.querySelector('input[type="checkbox"]') ||
+        el.onclick ||
+        el.style.cursor === "pointer" ||
+        getComputedStyle(el).cursor === "pointer" ||
+        el.tagName === "LABEL"
+      );
+    });
+
+    // 最终候选：有可交互的优先，否则回退到全部
+    const candidates = clickable.length > 0 ? clickable : optionEls;
+
+    for (const letter of letters) {
+      const idx = letter.charCodeAt(0) - 65; // A=0, B=1, ...
+      if (idx >= 0 && idx < candidates.length) {
+        const el = candidates[idx];
+        // 先尝试点内部的 input
+        const input = el.querySelector("input");
+        if (input) {
+          input.checked = true;
+          input.dispatchEvent(new Event("change", { bubbles: true }));
+          input.dispatchEvent(new Event("click", { bubbles: true }));
+        }
+        el.click();
+      }
+    }
+    return true;
+  }, { popupSel, letters });
+}
+
+// ==========================================
+// 4c. AI 智能处理测验弹窗（替代原来的 dismissQuizPopup）
+// ==========================================
+async function handleQuizPopup(page) {
   try {
     const popupSel = await findSelector(page, SELECTORS.quizPopup);
     if (!popupSel) return false;
@@ -305,43 +415,106 @@ async function dismissQuizPopup(page) {
     const isVisible = await popup.isVisible().catch(() => false);
     if (!isVisible) return false;
 
-    log("🔔 检测到弹窗，尝试自动处理...");
+    log("🔔 检测到测验弹窗！");
 
-    // 策略1: 优先选择无意义的选项并提交（常见于答题弹窗）
+    // Step 1: 提取题目
+    const quiz = await extractQuizFromPopup(page, popupSel);
+    if (!quiz || !quiz.question) {
+      log("  ⚠️  无法提取题目内容，尝试直接关闭...");
+      return await simpleClose(page, popupSel);
+    }
+
+    log(`  📝 题目: ${quiz.question.substring(0, 60)}...`);
+    if (quiz.options.length > 0) {
+      log(`  📋 选项 (${quiz.type}): ${quiz.options.map((o, i) => String.fromCharCode(65 + i) + "." + o.substring(0, 20)).join("  ")}`);
+    }
+
+    // Step 2: 调用 AI
+    log("  🤖 正在调用 AI 答题...");
+    const result = await askAI(quiz.question, quiz.options, quiz.type);
+
+    if (!result || !result.answer) {
+      log("  ⚠️  AI 返回为空，使用兜底策略...");
+      return await fallbackClose(page, popupSel);
+    }
+
+    log(`  ✅ AI 答案: ${JSON.stringify(result.answer)}`);
+
+    // Step 3: 点击对应选项
+    if (quiz.type === "fill") {
+      // 填空：尝试填入文本
+      log(`  📝 填入答案: ${result.answer}`);
+      await page.evaluate(({ popupSel, text }) => {
+        const popup = document.querySelector(popupSel);
+        if (!popup) return;
+        const input = popup.querySelector("input[type='text'], textarea, input:not([type])");
+        if (input) {
+          input.value = text;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }, { popupSel, text: String(result.answer) });
+    } else {
+      // 选择/多选：点击选项
+      await clickAnswerInPopup(page, popupSel, result.answer);
+      log("  🖱️  已点击对应选项");
+    }
+
+    // Step 4: 点击提交按钮
+    await page.waitForTimeout(500);
     const submitSel = await findSelector(page, SELECTORS.quizSubmitBtn);
     if (submitSel) {
-      // 先尝试随机选一个选项
-      const options = await page.$$(
-        popupSel + ' input[type="radio"], ' + popupSel + ' .option-item, ' + popupSel + ' label'
-      );
-      if (options.length > 0) {
-        await options[0].click().catch(() => {});
-        log("  已选择一个选项");
-      }
       await page.click(submitSel).catch(() => {});
-      log("  已点击提交");
-      await page.waitForTimeout(1500);
+      log("  📤 已提交答案");
+      await page.waitForTimeout(2000);
       return true;
     }
 
-    // 策略2: 直接关闭弹窗
-    const closeSel = await findSelector(page, SELECTORS.quizCloseBtn);
-    if (closeSel) {
-      await page.click(closeSel).catch(() => {});
-      log("  已关闭弹窗");
-      await page.waitForTimeout(1500);
-      return true;
-    }
+    // 没有提交按钮就尝试关闭
+    return await simpleClose(page, popupSel);
 
-    // 策略3: 点击弹窗以外的区域
-    log("  尝试点击空白区域关闭弹窗...");
-    await page.mouse.click(10, 10);
-    await page.waitForTimeout(1000);
-    return true;
   } catch (e) {
-    log(`  ⚠️  弹窗处理异常: ${e.message}`);
+    log(`  ⚠️  AI弹窗处理异常: ${e.message}`);
     return false;
   }
+}
+
+// ==========================================
+// 4d. 简单关闭弹窗（无需答题的弹窗）
+// ==========================================
+async function simpleClose(page, popupSel) {
+  const closeSel = await findSelector(page, SELECTORS.quizCloseBtn);
+  if (closeSel) {
+    await page.click(closeSel).catch(() => {});
+    log("  已关闭弹窗");
+    await page.waitForTimeout(1500);
+    return true;
+  }
+  await page.mouse.click(10, 10);
+  await page.waitForTimeout(1000);
+  return true;
+}
+
+// ==========================================
+// 4e. 兜底策略：AI 失败时随机选一个
+// ==========================================
+async function fallbackClose(page, popupSel) {
+  log("  🎲 使用兜底策略：随机选择...");
+  const options = await page.$$(
+    popupSel + ' input[type="radio"], ' + popupSel + ' .option-item, ' + popupSel + ' label'
+  );
+  if (options.length > 0) {
+    await options[0].click().catch(() => {});
+    log("  已随机选择一个选项");
+  }
+  const submitSel = await findSelector(page, SELECTORS.quizSubmitBtn);
+  if (submitSel) {
+    await page.click(submitSel).catch(() => {});
+    log("  已提交");
+  } else {
+    await simpleClose(page, popupSel);
+  }
+  await page.waitForTimeout(2000);
+  return true;
 }
 
 // ==========================================
@@ -512,8 +685,8 @@ async function mainLoop(page) {
           await playVideo(page);
         }
 
-        // b) 检查并关闭测验弹窗
-        await dismissQuizPopup(page);
+        // b) AI 智能处理测验弹窗
+        await handleQuizPopup(page);
 
         // c) 检测是否播放完毕
         const finished = await isVideoFinished(page);
