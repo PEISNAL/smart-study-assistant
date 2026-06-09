@@ -1,0 +1,34 @@
+# 环境变量 - 绝对不要提交！
+.env
+.env.local
+.env.*.local
+
+# 依赖
+node_modules/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志文件
+*.log
+logs/
+*.log.*
+
+# Playwright 浏览器缓存
+playwright-browsers/
+ms-playwright/
+.playwright/
+
+# IDE / 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 临时文件
+tmp/
+temp/
+*.tmp
+*.temp
